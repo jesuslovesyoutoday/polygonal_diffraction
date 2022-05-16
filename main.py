@@ -32,7 +32,7 @@ class Field():
                                                     
         self.x = x              # Amount of horizontal steps
         self.y = y              # Amount of vertical steps
-        self.a = 2 * R          # Side of the screen
+        self.a = R/4          # Side of the screen
         
     def make_mesh(self):
         
@@ -79,13 +79,17 @@ class Field():
             tj  = Lj/np.absolute(Lj)
             t0  = complex_projection((qj - p), tj)
             t1  = (np.absolute(Lj) + t0)[0]
-            a = sqrt(np.absolute(qj - p)**2 - t0**2)
+            print(np.absolute(qj - p)**2 - t0**2)
+            a = sqrt(abs(np.absolute(qj - p)**2 - t0**2))
             b = self.k/(2*self.L)
-            I, err = quadpy.quad(lambda x: np.exp(1j * b * x**2) / (x**2 + abs(a)**2), t0, t1, epsabs=10, epsrel=10, limit=495) 
+            if (a!=0):
+                I, err = quadpy.quad(lambda x: np.exp(1j * b * x**2) / (x**2 + abs(a)**2), t0, t1, epsabs=100, epsrel=100, limit=495) 
             #x = t0
             #print(np.exp(1j * b * x**2) / (x**2 + abs(a)**2))
-            I_ = a * np.exp(1j * b * a**2) * I
-            summ += I_
+                I_ = a * np.exp(1j * b * a**2) * I
+                summ += I_
+            else:
+                summ += 0
         return(summ)
     
     
@@ -99,7 +103,7 @@ class Field():
     
         for i in range(self.y+1):
             for j in range(self.x+1):
-                self.I[i][j] = self.E[i][j] * np.conj(self.E[i][j])
+                self.I[i][j] = self.E[i][j] * np.conj(self.E[i][j]) / self.U0**2
         #print(self.I[2][2]) 
                 
     def snapshot(self):
@@ -124,7 +128,7 @@ class Field():
         writer.SetFileName("diff.vts")
         writer.Write()
    
-f = Field(1, 20, 1, 0.0000006, 0.001, 25, 25)
+f = Field(1, 3, 0.025, 0.0000018, 0.001, 100, 100)
 f.make_aperture()
 f.make_mesh()             
 #f.print_aperture()
