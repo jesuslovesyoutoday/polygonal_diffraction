@@ -4,6 +4,8 @@ import numpy as np
 import quadpy
 from scipy.integrate import quad
 from matplotlib import pyplot as plt
+from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
 
 def complex_projection(v1, v2):
     a = np.array([v1.real, v1.imag]).reshape(1, 2)[0]
@@ -23,16 +25,16 @@ class Field():
         self.R = R              # Radius of the circumscribed circle
         
         self.len = 2*R/sin(pi/N)
-        self.A = np.zeros((N+1, 2), dtype=np.complex128) # Coordinates of vertexes
+        self.A = np.zeros((N+1, 2), dtype=np.complex128)     # Coordinates of vertexes
         self.S = np.zeros((x+1, y+1), dtype=np.complex128)   # Coordinates of screen mesh
-        self.E = np.zeros((x+1, y+1), dtype=np.float64)   # Distribution of the field 
-                                                    # on the screen
-        self.I = np.zeros((x+1, y+1), dtype=np.float64)   # Distribution of the 
-                                                    # intensity on the screen
+        self.E = np.zeros((x+1, y+1), dtype=np.float64)      # Distribution of the field 
+                                                             # on the screen
+        self.I = np.zeros((x+1, y+1), dtype=np.float64)      # Distribution of the 
+                                                             # intensity on the screen
                                                     
         self.x = x              # Amount of horizontal steps
         self.y = y              # Amount of vertical steps
-        self.a = R/4          # Side of the screen
+        self.a = 2 * R          # Side of the screen
         
     def make_mesh(self):
         
@@ -83,9 +85,8 @@ class Field():
             a = sqrt(abs(np.absolute(qj - p)**2 - t0**2))
             b = self.k/(2*self.L)
             if (a!=0):
-                I, err = quadpy.quad(lambda x: np.exp(1j * b * x**2) / (x**2 + abs(a)**2), t0, t1, epsabs=100, epsrel=100, limit=495) 
-            #x = t0
-            #print(np.exp(1j * b * x**2) / (x**2 + abs(a)**2))
+                I, err = (quadpy.quad(lambda x: np.exp(1j * b * x**2) / 
+                         (x**2 + abs(a)**2), t0, t1, epsabs=100, epsrel=100, limit=495))
                 I_ = a * np.exp(1j * b * a**2) * I
                 summ += I_
             else:
@@ -94,17 +95,26 @@ class Field():
     
     
     def calculate_E(self):
-        
+        pol = []
+        for i in range(self.N):
+            pol.append((self.A[i].real[0], self.A[i].imag[0]))
+        print(pol)
+        polygon = Polygon(pol)
         for i in range(self.y+1):
             for j in range(self.x+1):
-                self.E[i][j] = self.U0/(2*pi) * self.make_integral_sum(i, j) 
+                I = self.make_integral_sum(i, j)
+                point = Point(self.S[i][j].real, self.S[i][j].imag)
+                if (polygon.contains(point)):
+                    e = 1
+                else:
+                    e = 0
+                self.E[i][j] += self.U0 * (e - 1/(2*pi) * I)
     
     def calculate_I(self): 
     
         for i in range(self.y+1):
             for j in range(self.x+1):
-                self.I[i][j] = self.E[i][j] * np.conj(self.E[i][j]) / self.U0**2
-        #print(self.I[2][2]) 
+                self.I[i][j] = self.E[i][j] * np.conj(self.E[i][j]) / self.U0**2 
                 
     def snapshot(self):
     
@@ -128,7 +138,7 @@ class Field():
         writer.SetFileName("diff.vts")
         writer.Write()
    
-f = Field(1, 3, 0.025, 0.0000018, 0.001, 100, 100)
+f = Field(1, 6, 0.5, 0.0000007, 0.001, 200, 200)
 f.make_aperture()
 f.make_mesh()             
 #f.print_aperture()
